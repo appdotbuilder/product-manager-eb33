@@ -1,22 +1,55 @@
 
+import { db } from '../db';
+import { productsTable } from '../db/schema';
 import { type UpdateProductInput, type Product } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function updateProduct(input: UpdateProductInput): Promise<Product | null> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is updating an existing product in the database.
-  // This would typically:
-  // 1. Check if product exists by ID
-  // 2. Update only provided fields in the products table
-  // 3. Update the updated_at timestamp
-  // 4. Return updated product if found, null if not found
-  
-  return {
-    id: input.id,
-    name: input.name || 'Updated Product',
-    description: input.description !== undefined ? input.description : 'Updated description',
-    price: input.price || 39.99,
-    stock_quantity: input.stock_quantity || 50,
-    created_at: new Date(Date.now() - 86400000), // Mock created date (1 day ago)
-    updated_at: new Date() // Current timestamp for update
-  };
+  try {
+    // Check if product exists
+    const existingProduct = await db.select()
+      .from(productsTable)
+      .where(eq(productsTable.id, input.id))
+      .execute();
+
+    if (existingProduct.length === 0) {
+      return null;
+    }
+
+    // Build update object with only provided fields
+    const updateData: Partial<typeof productsTable.$inferInsert> = {};
+
+    if (input.name !== undefined) {
+      updateData.name = input.name;
+    }
+    if (input.description !== undefined) {
+      updateData.description = input.description;
+    }
+    if (input.price !== undefined) {
+      updateData.price = input.price.toString(); // Convert number to string for numeric column
+    }
+    if (input.stock_quantity !== undefined) {
+      updateData.stock_quantity = input.stock_quantity;
+    }
+
+    // Always update the updated_at timestamp
+    updateData.updated_at = new Date();
+
+    // Update product and return updated record
+    const result = await db.update(productsTable)
+      .set(updateData)
+      .where(eq(productsTable.id, input.id))
+      .returning()
+      .execute();
+
+    // Convert numeric fields back to numbers before returning
+    const product = result[0];
+    return {
+      ...product,
+      price: parseFloat(product.price) // Convert string back to number
+    };
+  } catch (error) {
+    console.error('Product update failed:', error);
+    throw error;
+  }
 }

@@ -1,14 +1,20 @@
 
+import { db } from '../db';
+import { productsTable } from '../db/schema';
 import { type DeleteProductInput } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function deleteProduct(input: DeleteProductInput): Promise<boolean> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is deleting a product from the database by ID.
-  // This would typically:
-  // 1. Check if product exists by ID
-  // 2. Delete product from products table
-  // 3. Return true if successfully deleted, false if product not found
-  
-  // Mock logic: assume deletion is successful for any ID > 0
-  return input.id > 0;
-}
+export const deleteProduct = async (input: DeleteProductInput): Promise<boolean> => {
+  try {
+    // Delete product by ID
+    const result = await db.delete(productsTable)
+      .where(eq(productsTable.id, input.id))
+      .execute();
+
+    // Check if any rows were affected (product existed and was deleted)
+    return result.rowCount !== null && result.rowCount > 0;
+  } catch (error) {
+    console.error('Product deletion failed:', error);
+    throw error;
+  }
+};

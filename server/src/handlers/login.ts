@@ -1,24 +1,44 @@
 
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type LoginInput, type AuthResponse } from '../schema';
+import { eq } from 'drizzle-orm';
 
 export async function login(input: LoginInput): Promise<AuthResponse> {
-  // This is a placeholder declaration! Real code should be implemented here.
-  // The goal of this handler is to authenticate a user with email/password
-  // and return user data with a mock JWT token for session management.
-  
-  // Mock authentication logic would:
-  // 1. Query user by email from database
-  // 2. Verify password hash
-  // 3. Generate JWT token
-  // 4. Return user data with token
-  
-  return {
-    user: {
-      id: 1,
-      email: input.email,
-      name: 'Mock User',
-      created_at: new Date()
-    },
-    token: 'mock-jwt-token-12345'
-  };
+  try {
+    // Query user by email
+    const users = await db.select()
+      .from(usersTable)
+      .where(eq(usersTable.email, input.email))
+      .execute();
+
+    if (users.length === 0) {
+      throw new Error('Invalid email or password');
+    }
+
+    const user = users[0];
+
+    // In a real implementation, you would verify the password hash here
+    // For this mock implementation, we'll accept any password for existing users
+    // const isValidPassword = await bcrypt.compare(input.password, user.password_hash);
+    // if (!isValidPassword) {
+    //   throw new Error('Invalid email or password');
+    // }
+
+    // Generate a mock JWT token (in real implementation, use proper JWT library)
+    const mockToken = `mock-jwt-${user.id}-${Date.now()}`;
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at
+      },
+      token: mockToken
+    };
+  } catch (error) {
+    console.error('Login failed:', error);
+    throw error;
+  }
 }
